@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowUpRight, BookOpen, ChevronRight, Code2, Database, LayoutDashboard, Menu, SlidersHorizontal, Table2, WandSparkles, X } from 'lucide-react'
 import { typeCatalog } from '@/data/showcase'
 import { features, presets } from '@/showcase/catalog'
@@ -7,6 +7,7 @@ import { ClientOnly, NavLink, SectionHeading } from '@/showcase/ui'
 import { FeatureDetail, FeatureGallery, Overview, PresetDetail, PresetGallery, TypeDetail, TypeGallery } from '@/showcase/pages'
 import { DocsPage } from '@/showcase/docs-page'
 import { TableMaker } from '@/showcase/table-maker'
+import { trackPageView } from '@/app/analytics'
 
 function usePathname(initialPath: string) {
   const [path, setPath] = useState(initialPath)
@@ -22,6 +23,13 @@ function usePathname(initialPath: string) {
 export default function App({ initialPath = '/' }: { initialPath?:string }) {
   const [path, navigate] = usePathname(initialPath)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const previousPath = useRef(path)
+  useEffect(() => {
+    if (previousPath.current !== path) {
+      trackPageView(path)
+      previousPath.current = path
+    }
+  }, [path])
   const parts = path.split('/').filter(Boolean)
   const type = parts[0] === 'types' && parts[1] ? typeCatalog.find(item => item.slug === parts[1]) : undefined
   const feature = parts[0] === 'features' && parts[1] ? [...features,{slug:'server',name:'Server data'}].find(item => item.slug === parts[1]) : undefined

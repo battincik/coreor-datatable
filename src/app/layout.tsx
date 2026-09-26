@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 import '../index.css'
 import '../App.css'
 import '../showcase.css'
@@ -16,5 +17,14 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { themeColor: '#071016', width: 'device-width', initialScale: 1 }
 export default function RootLayout({ children }: Readonly<{children: React.ReactNode}>) {
   const schema = { '@context':'https://schema.org', '@type':'SoftwareSourceCode', name:'Coreor DataTable', description:'Typed React data grid with editable cells, filters, server pagination and CSV export.', codeRepository:'https://github.com/battincik/coreor-datatable', programmingLanguage:['TypeScript','React'], license:'https://github.com/battincik/coreor-datatable/blob/main/LICENSE' }
-  return <html lang="en"><body>{children}<script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(schema)}}/></body></html>
+  const measurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID
+  return <html lang="en"><body>
+    {measurementId && <>
+      <Script id="google-analytics-config" strategy="afterInteractive">
+        {`window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', '${measurementId}', { send_page_view: false });`}
+      </Script>
+      <Script id="google-analytics" strategy="afterInteractive" src={`https://www.googletagmanager.com/gtag/js?id=${measurementId}`} />
+    </>}
+    {children}<script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(schema)}}/>
+  </body></html>
 }
