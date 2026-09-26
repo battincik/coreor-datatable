@@ -1,0 +1,37 @@
+{
+  "name": "coreor-datatable-showcase",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "npm run build:lib && next build --turbopack",
+    "start": "next start",
+    "lint": "oxlint src tests scripts vite.lib.config.ts next.config.ts",
+    "test": "node tests/pagination.mjs && node tests/cell-types.mjs && node tests/grid-features.mjs && node tests/showcase.mjs",
+    "build:lib": "vite build --config vite.lib.config.ts && tsc -p tsconfig.lib.json && node scripts/build-library.mjs",
+    "pack:dry": "npm run build:lib && npm pack ./packages/coreor-datatable --dry-run"
+  },
+  "dependencies": {
+    "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.14.13",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.48.0",
+    "radix-ui": "^1.6.7",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "tailwind-merge": "^3.7.0",
+    "next": "16.3.6"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "jsdom": "^30.1.1",
+    "oxlint": "^1.81.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  }
+}
