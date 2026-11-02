@@ -2,7 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useReactTable, type ColumnDef, type ColumnFiltersState, type ColumnPinningState, type PaginationState, type RowSelectionState, type SortingState, type VisibilityState } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Clipboard, Columns3, Download, EyeOff, Filter, MoreHorizontal, Pin, Redo2, RotateCcw, Search, Trash2, Undo2, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, ChevronDown, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Clipboard, Columns3, Download, EyeOff, Filter, MoreHorizontal, Pin, Redo2, RefreshCw, RotateCcw, Search, Trash2, Undo2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -37,10 +37,23 @@ export type GridPaginationOptions = {
   initialPageSize?: number
   pageSizeOptions?: number[]
 }
+export type GridRefreshOptions = {
+  /** Consumer owns the actual reload/fetch behavior. */
+  onRefresh: () => void | Promise<void>
+  /** Optional controlled loading state for externally managed refreshes. */
+  loading?: boolean
+  /** Disable refresh regardless of loading state. */
+  disabled?: boolean
+  /** Disable the button while an async refresh is pending. Defaults to true. */
+  disableWhileRefreshing?: boolean
+  /** Accessible button label. */
+  label?: string
+}
 export type EnterpriseGridProps<T extends { id: string | number }> = {
   data: T[]
   columns: GridColumn<T>[]
-  title: string
+  /** Used for accessibility only. The visual grid title has been removed. */
+  title?: string
   onDataChange?: (next: T[]) => void
   onQueryChange?: (query: GridQuery) => void
   serverMode?: boolean
@@ -48,7 +61,20 @@ export type EnterpriseGridProps<T extends { id: string | number }> = {
   pagination?: GridPaginationOptions | false
   totalRows?: number
   loading?: boolean
+  /** Fixed body height in pixels. */
   height?: number
+  /** Minimum body height when fitViewport is enabled. */
+  minHeight?: number
+  /** Maximum body height. */
+  maxHeight?: number
+  /** Fit body height to viewport: window.innerHeight - viewportOffset. */
+  fitViewport?: boolean
+  /** Space reserved above/below the grid when fitViewport is enabled. Defaults to 280. */
+  viewportOffset?: number
+  /** Enable vertical scrolling inside the table body. Defaults to true. */
+  internalScroll?: boolean
+  /** Optional consumer-controlled refresh action shown before undo/redo. */
+  refresh?: GridRefreshOptions
   filename?: string
   /** Server mode: export matching rows or selected IDs beyond the loaded page. Return a Blob or start the download yourself. */
   onExportRequest?: (request: GridExportRequest) => Blob | void | Promise<Blob | void>
@@ -67,7 +93,7 @@ const download = (content: string, filename: string) => {
   const link = document.createElement('a'); link.href = url; link.download = filename; link.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
-export function EnterpriseGrid<T extends { id: string | number }>({ data, columns, title, onDataChange, onQueryChange, serverMode = false, pagination: paginationOptions, totalRows, loading, height = 460, filename = 'export.csv', onExportRequest }: EnterpriseGridProps<T>) {
+export function EnterpriseGrid<T extends { id: string | number }>({ data, columns, title = 'Data grid', onDataChange, onQueryChange, serverMode = false, pagination: paginationOptions, totalRows, loading, height = 420, minHeight = 260, maxHeight, fitViewport = false, viewportOffset = 280, internalScroll = true, refresh, filename = 'export.csv', onExportRequest }: EnterpriseGridProps<T>) {
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
   const [sorting, setSorting] = useState<SortingState>([])
@@ -81,7 +107,20 @@ export function EnterpriseGrid<T extends { id: string | number }>({ data, column
   const [editing, setEditing] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
+  const [viewportHeight, setViewportHeight] = useState(height)
   const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (!fitViewport) { setViewportHeight(height); return }
+    const measure = () => {
+      const available = Math.max(minHeight, window.innerHeight - viewportOffset)
+      setViewportHeight(maxHeight ? Math.min(available, maxHeight) : available)
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [fitViewport, height, minHeight, maxHeight, viewportOffset])
+  const bodyHeight = fitViewport ? viewportHeight : Math.max(minHeight, maxHeight ? Math.min(height, maxHeight) : height)
   const relativeRefreshMs = columns.reduce((minimum, col) => {
     if (col.kind !== 'timestamp' || col.cellOptions?.timestampFormat !== 'R') return minimum
     const value = col.cellOptions.relativeRefreshMs
@@ -90,11 +129,11 @@ export function EnterpriseGrid<T extends { id: string | number }>({ data, column
   }, Infinity)
   useEffect(() => {
     if (!Number.isFinite(relativeRefreshMs)) return
-    const refresh = () => { if (!document.hidden) setNow(Date.now()) }
-    refresh()
-    const timer = window.setInterval(refresh, relativeRefreshMs)
-    document.addEventListener('visibilitychange', refresh)
-    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', refresh) }
+    const refreshTime = () => { if (!document.hidden) setNow(Date.now()) }
+    refreshTime()
+    const timer = window.setInterval(refreshTime, relativeRefreshMs)
+    document.addEventListener('visibilitychange', refreshTime)
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', refreshTime) }
   }, [relativeRefreshMs])
   const [history, setHistory] = useState<{ past: T[][]; future: T[][] }>({ past: [], future: [] })
   const paginationEnabled = paginationOptions !== false
@@ -112,6 +151,15 @@ export function EnterpriseGrid<T extends { id: string | number }>({ data, column
   const commitData = (next: T[]) => { if (!onDataChange) return; setHistory(h => ({ past: [...h.past.slice(-19), data], future: [] })); onDataChange(next) }
   const undo = () => { if (!history.past.length || !onDataChange) return; const previous = history.past.at(-1)!; setHistory(h => ({ past: h.past.slice(0,-1), future: [data,...h.future] })); onDataChange(previous) }
   const redo = () => { if (!history.future.length || !onDataChange) return; const next = history.future[0]; setHistory(h => ({ past: [...h.past,data], future: h.future.slice(1) })); onDataChange(next) }
+  const handleRefresh = async () => {
+    if (!refresh || refreshing || refresh.loading || refresh.disabled) return
+    try {
+      setRefreshing(true)
+      await refresh.onRefresh()
+    } finally {
+      setRefreshing(false)
+    }
+  }
   const definitions = useMemo<ColumnDef<T>[]>(() => [
     { id: 'select', size: 52, minSize: 52, maxSize: 52, enableHiding: false, enableSorting: false, header: ({ table }) => <Checkbox aria-label="Bu sayfadaki satırları seç" checked={table.getIsAllPageRowsSelected() ? true : table.getIsSomePageRowsSelected() ? 'indeterminate' : false} onCheckedChange={v => table.toggleAllPageRowsSelected(!!v)} />, cell: ({ row }) => <Checkbox aria-label={`${row.index + 1}. satırı seç`} checked={row.getIsSelected()} onCheckedChange={v => row.toggleSelected(!!v)} /> },
     ...columns.map(col => ({ id: col.key, accessorKey: col.key, size: col.width ?? 170, minSize: 85, header: col.title,
@@ -172,12 +220,15 @@ export function EnterpriseGrid<T extends { id: string | number }>({ data, column
   const updateCell = (row: T, col: GridColumn<T>, value: unknown) => { commitData(data.map(item => item.id === row.id ? { ...item, [col.key]: value } : item)); setEditing(null) }
   const gridTemplate = visibleCols.map(c => `${c.getSize()}px`).join(' ')
   const pinnedStyle = (columnId: string): CSSProperties => { const c = table.getColumn(columnId)!; return c.getIsPinned() === 'left' ? { position: 'sticky', left: c.getStart('left'), zIndex: 3, background: '#1c1c1e', boxShadow: '1px 0 #303033' } : {} }
+  const refreshBusy = Boolean(refresh?.loading || refreshing)
+  const refreshDisabled = Boolean(refresh?.disabled || ((refresh?.disableWhileRefreshing ?? true) && refreshBusy))
   return <section className="enterprise-grid" aria-label={title}>
-    <div className="grid-title"><div><h2>{title}</h2><span>INTERACTIVE DATA WORKSPACE</span></div><Button variant="outline" size="sm" onClick={reset}><RotateCcw size={14}/> Reset</Button></div>
     <div className="grid-shell">
       <div className="grid-toolbar">
         {selectedCount ? <><Button variant="ghost" size="icon" aria-label="Seçimi temizle" onClick={() => setSelected({})}><X size={16}/></Button><strong>{fmt(selectedCount)} selected across pages</strong><div className="toolbar-spacer"/><Button variant="ghost" size="sm" title={serverMode ? 'Only selected rows loaded on this page can be copied' : undefined} disabled={!selectedLoaded.length} onClick={() => void copySelected()}><Clipboard size={15}/> Copy {serverMode ? 'loaded' : 'selected'}</Button><Button variant="ghost" size="sm" title={serverMode && !onExportRequest ? 'Provide onExportRequest to export selected IDs from all pages' : undefined} disabled={exporting || (serverMode && !onExportRequest)} onClick={() => void makeCsv('selected')}><Download size={15}/> Export selected</Button><Button variant="ghost" size="sm" className="danger" disabled={!onDataChange || serverMode} onClick={() => { if (window.confirm(`${selectedCount} kayıt silinsin mi?`)) { commitData(data.filter(item => !selected[String(item.id)])); setSelected({}) } }}><Trash2 size={15}/> Delete</Button></> : <>
           <div className="search-box"><Search size={15}/><Input aria-label="Tüm alanlarda ara" placeholder="Search across all columns..." value={search} onChange={e => changeSearch(e.target.value)}/>{search && <button aria-label="Aramayı temizle" onClick={() => changeSearch('')}><X size={13}/></button>}</div><span className="row-count">{fmt(total)} rows{serverMode && totalRows == null ? ' loaded' : ''}</span><div className="toolbar-spacer"/>
+          <Button variant="ghost" size="icon" aria-label="Sıfırla" onClick={reset}><RotateCcw size={15}/></Button><span className="divider"/>
+          {refresh && <><Button variant="ghost" size="icon" aria-label={refresh.label ?? 'Yenile'} title={refresh.label ?? 'Yenile'} disabled={refreshDisabled} onClick={() => void handleRefresh()}><RefreshCw size={15} className={refreshBusy ? 'grid-refresh-spin' : undefined}/></Button><span className="divider"/></>}
           <Button variant="ghost" size="icon" aria-label="Geri al" disabled={!history.past.length} onClick={undo}><Undo2 size={15}/></Button><Button variant="ghost" size="icon" aria-label="Yinele" disabled={!history.future.length} onClick={redo}><Redo2 size={15}/></Button><span className="divider"/>
           <Button variant={showFilters ? 'secondary' : 'ghost'} size="sm" onClick={() => setShowFilters(v => !v)}><Filter size={15}/> Filter{filters.length > 0 && <span className="pill">{filters.length}</span>}</Button>
           <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><Columns3 size={15}/> Columns</Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-52"><DropdownMenuLabel>Visible columns</DropdownMenuLabel><DropdownMenuSeparator/>{columns.map(c => <DropdownMenuCheckboxItem key={c.key} checked={table.getColumn(c.key)?.getIsVisible()} onCheckedChange={v => table.getColumn(c.key)?.toggleVisibility(!!v)}>{c.title}</DropdownMenuCheckboxItem>)}<DropdownMenuSeparator/><DropdownMenuItem onClick={() => setVisible({})}>Show all columns</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
@@ -191,7 +242,7 @@ export function EnterpriseGrid<T extends { id: string | number }>({ data, column
         <div style={{ width: table.getTotalSize(), minWidth: '100%' }}>
           <div className="grid-header grid-row" style={{ gridTemplateColumns: gridTemplate }} role="row">{visibleCols.map(column => { const meta = columns.find(c => c.key === column.id); return <div key={column.id} className="grid-head-cell" style={pinnedStyle(column.id)} role="columnheader"><span className="head-label">{column.id === 'select' ? flexRender(column.columnDef.header, table.getHeaderGroups()[0].headers.find(h => h.column.id === 'select')!.getContext()) : meta?.title}</span>{meta && <DropdownMenu><DropdownMenuTrigger asChild><button className="head-menu" aria-label={`${meta.title} seçenekleri`}><ChevronDown size={14}/></button></DropdownMenuTrigger><DropdownMenuContent align="start" className="w-48"><DropdownMenuItem onClick={() => column.toggleSorting(false)}><ArrowUp size={14}/> Sort ascending</DropdownMenuItem><DropdownMenuItem onClick={() => column.toggleSorting(true)}><ArrowDown size={14}/> Sort descending</DropdownMenuItem><DropdownMenuSeparator/><DropdownMenuItem onClick={() => setShowFilters(true)}><Filter size={14}/> Filter</DropdownMenuItem><DropdownMenuItem onClick={() => setPinning(p => ({ ...p, left: column.getIsPinned() ? ['select'] : ['select', column.id] }))}><Pin size={14}/> {column.getIsPinned() ? 'Unpin' : 'Pin'} column</DropdownMenuItem><DropdownMenuItem onClick={() => column.toggleVisibility(false)}><EyeOff size={14}/> Hide column</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}{meta && <div className="resize-handle" onMouseDown={table.getHeaderGroups()[0].headers.find(h => h.column.id === column.id)?.getResizeHandler()} onTouchStart={table.getHeaderGroups()[0].headers.find(h => h.column.id === column.id)?.getResizeHandler()} />}</div> })}</div>
           {showFilters && <div className="grid-filters grid-row" style={{ gridTemplateColumns: gridTemplate }} role="row">{visibleCols.map(column => { const meta = columns.find(c => c.key === column.id); return <div key={column.id} className="filter-cell" style={pinnedStyle(column.id)}>{meta && <GridColumnFilter column={meta} value={column.getFilterValue()} choices={choiceValues(meta)} onChange={next => column.setFilterValue(next)} />}</div> })}</div>}
-          <div ref={bodyRef} className="grid-body" style={{ height }} role="rowgroup" aria-busy={loading}>{loading && <div className="loading-bar">Loading data…</div>}{!loading && rows.length === 0 && <div className="empty">No rows match these filters. <button onClick={reset}>Clear filters</button></div>}<div style={{ position: 'relative', height: virtualizer.getTotalSize() }}>{virtualizer.getVirtualItems().map(item => { const row = rows[item.index]; return <div key={row.id} className={`grid-data-row grid-row ${row.getIsSelected() ? 'is-selected' : ''}`} role="row" aria-rowindex={item.index+2} style={{ gridTemplateColumns: gridTemplate, height: heights[density], transform: `translateY(${item.start}px)` }}>{visibleCols.map((column, index) => { const meta = columns.find(c => c.key === column.id); const cell = row.getVisibleCells().find(c => c.column.id === column.id)!; const cellId = `${row.id}:${column.id}`; return <div key={column.id} className={`grid-cell ${['number', 'price', 'duration', 'fileSize', 'rating'].includes(meta?.kind ?? '') ? 'numeric' : ''}`} style={pinnedStyle(column.id)} role="gridcell" tabIndex={index === 1 ? 0 : -1} onFocus={() => setActiveCell(`${String.fromCharCode(65+index)}${item.index+1}`)} onDoubleClick={() => { if (meta?.editable && onDataChange) { setEditing(cellId) } }}>{editing === cellId && meta ? <GridCellEditor key={cellId} column={meta} row={row.original} value={row.original[meta.key]} choices={choiceValues(meta)} onSave={value => updateCell(row.original, meta, value)} onCancel={() => setEditing(null)}/>: flexRender(cell.column.columnDef.cell, cell.getContext())}</div> })}</div> })}</div></div>
+          <div ref={bodyRef} className="grid-body" style={{ height: bodyHeight, maxHeight: maxHeight ?? undefined, overflowY: internalScroll ? 'auto' : 'hidden' }} role="rowgroup" aria-busy={loading}>{loading && <div className="loading-bar">Loading data…</div>}{!loading && rows.length === 0 && <div className="empty">No rows match these filters. <button onClick={reset}>Clear filters</button></div>}<div style={{ position: 'relative', height: virtualizer.getTotalSize() }}>{virtualizer.getVirtualItems().map(item => { const row = rows[item.index]; return <div key={row.id} className={`grid-data-row grid-row ${row.getIsSelected() ? 'is-selected' : ''}`} role="row" aria-rowindex={item.index+2} style={{ gridTemplateColumns: gridTemplate, height: heights[density], transform: `translateY(${item.start}px)` }}>{visibleCols.map((column, index) => { const meta = columns.find(c => c.key === column.id); const cell = row.getVisibleCells().find(c => c.column.id === column.id)!; const cellId = `${row.id}:${column.id}`; return <div key={column.id} className={`grid-cell ${['number', 'price', 'duration', 'fileSize', 'rating'].includes(meta?.kind ?? '') ? 'numeric' : ''}`} style={pinnedStyle(column.id)} role="gridcell" tabIndex={index === 1 ? 0 : -1} onFocus={() => setActiveCell(`${String.fromCharCode(65+index)}${item.index+1}`)} onDoubleClick={() => { if (meta?.editable && onDataChange) { setEditing(cellId) } }}>{editing === cellId && meta ? <GridCellEditor key={cellId} column={meta} row={row.original} value={row.original[meta.key]} choices={choiceValues(meta)} onSave={value => updateCell(row.original, meta, value)} onCancel={() => setEditing(null)}/>: flexRender(cell.column.columnDef.cell, cell.getContext())}</div> })}</div> })}</div></div>
           <div className="grid-summary grid-row" style={{ gridTemplateColumns: gridTemplate }}><div className="summary-cell" style={pinnedStyle('select')}></div>{visibleCols.slice(1).map((col,index) => { const meta = columns.find(c => c.key === col.id); const aggregate = meta?.aggregate && filteredRows.length ? filteredRows.reduce((sum,row) => sum + Number(row.original[meta.key] ?? 0),0) / (meta.aggregate === 'avg' ? filteredRows.length : 1) : null; return <div key={col.id} className="summary-cell" style={pinnedStyle(col.id)}>{index === 0 ? `${fmt(filteredRows.length)} rows` : aggregate != null ? <><span>{meta?.aggregate === 'avg' ? 'Avg' : 'Sum'}</span><strong>{meta && ['duration','fileSize','rating','price','progress'].includes(meta.kind ?? '') ? renderGridCell(meta.kind, aggregate, meta.cellOptions, now) : fmt(aggregate)}</strong></> : null}</div> })}</div>
         </div>
       </div>
