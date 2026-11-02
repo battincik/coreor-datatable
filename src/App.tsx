@@ -36,13 +36,14 @@ export default function App({ initialPath = '/' }: { initialPath?:string }) {
   const preset = parts[0] === 'examples' && parts[1] ? presets.find(item => item.slug === parts[1]) : undefined
   const title = type?.name ?? feature?.name ?? preset?.name ?? (path === '/types' ? 'Column types' : path === '/features' ? 'Feature labs' : path === '/examples' ? 'Data sets' : path === '/maker' ? 'Table Maker' : path.startsWith('/docs') ? 'Documentation' : 'Overview')
   const nav = (next:string) => { navigate(next); setMobileOpen(false) }
+  const featureCount = String(features.length + 1).padStart(2, '0')
   return <div className="sc-app">
     <aside className={`sc-sidebar ${mobileOpen ? 'sc-sidebar-open' : ''}`}>
       <div className="sc-brand"><span className="sc-brand-icon"><Table2 size={18}/></span><div><strong>COREOR<span> / DATA</span></strong><small>DATATABLE SHOWCASE</small></div><button className="sc-mobile-close" aria-label="Close navigation" onClick={() => setMobileOpen(false)}><X size={17}/></button></div>
       <div className="sc-sidebar-scroll"><div className="sc-nav-label">GET STARTED</div>
         <NavLink to="/" active={path === '/'} navigate={nav} className="sc-nav-item"><LayoutDashboard size={17}/> Overview</NavLink>
         <NavLink to="/types" active={path === '/types'} navigate={nav} className="sc-nav-item"><Table2 size={17}/> Column types <span>19</span></NavLink>
-        <NavLink to="/features" active={path === '/features'} navigate={nav} className="sc-nav-item"><SlidersHorizontal size={17}/> Feature labs <span>08</span></NavLink>
+        <NavLink to="/features" active={path === '/features'} navigate={nav} className="sc-nav-item"><SlidersHorizontal size={17}/> Feature labs <span>{featureCount}</span></NavLink>
         <NavLink to="/examples" active={path === '/examples'} navigate={nav} className="sc-nav-item"><Database size={17}/> Data sets <span>03</span></NavLink>
         <NavLink to="/maker" active={path === '/maker'} navigate={nav} className="sc-nav-item"><WandSparkles size={17}/> Table Maker <span>NEW</span></NavLink>
         <NavLink to="/docs" active={path.startsWith('/docs')} navigate={nav} className="sc-nav-item"><Code2 size={17}/> Documentation</NavLink>
