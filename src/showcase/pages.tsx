@@ -2,12 +2,15 @@ import { ArrowRight, ArrowUpRight, Database } from 'lucide-react'
 import { typeCatalog, showcaseColumns } from '@/data/showcase'
 import { features, presets } from '@/showcase/catalog'
 import { DemoTable, PresetTable, ServerTable } from '@/showcase/demo-tables'
+import { DrawerDemoTable } from '@/showcase/drawer-demo'
 import { BackLink, ClientOnly, CodePanel, NavLink, NextLink, SectionHeading } from '@/showcase/ui'
 
 type PageProps = { navigate:(path:string)=>void }
+const featureCount = features.length + 1
+const featureCountLabel = String(featureCount).padStart(2, '0')
 
 export function Overview({ navigate }: PageProps) {
-  return <><section className="sc-hero"><div><div className="sc-hero-label"><span/> COREOR / REACT DATA GRID</div><h1>Every data shape.<br/><em>One powerful grid.</em></h1><p>Build fast, typed data experiences. Explore every cell type and feature, then generate your own table in the live playground.</p><div className="sc-hero-actions"><NavLink to="/maker" navigate={navigate} className="sc-primary">Open Table Maker <ArrowRight size={16}/></NavLink><NavLink to="/docs/installation" navigate={navigate} className="sc-secondary">Get started <ArrowRight size={16}/></NavLink></div></div><div className="sc-hero-visual"><div className="sc-hero-stat"><strong>19</strong><span>COLUMN TYPES</span></div><div className="sc-hero-stat"><strong>08</strong><span>FEATURE LABS</span></div><div className="sc-hero-stat"><strong>2.4k</strong><span>LIVE RECORDS</span></div><div className="sc-visual-lines"><i/><i/><i/><i/><i/><i/><i/></div></div></section>
+  return <><section className="sc-hero"><div><div className="sc-hero-label"><span/> COREOR / REACT DATA GRID</div><h1>Every data shape.<br/><em>One powerful grid.</em></h1><p>Build fast, typed data experiences. Explore every cell type and feature, then generate your own table in the live playground.</p><div className="sc-hero-actions"><NavLink to="/maker" navigate={navigate} className="sc-primary">Open Table Maker <ArrowRight size={16}/></NavLink><NavLink to="/docs/installation" navigate={navigate} className="sc-secondary">Get started <ArrowRight size={16}/></NavLink></div></div><div className="sc-hero-visual"><div className="sc-hero-stat"><strong>19</strong><span>COLUMN TYPES</span></div><div className="sc-hero-stat"><strong>{featureCountLabel}</strong><span>FEATURE LABS</span></div><div className="sc-hero-stat"><strong>2.4k</strong><span>LIVE RECORDS</span></div><div className="sc-visual-lines"><i/><i/><i/><i/><i/><i/><i/></div></div></section>
     <div className="sc-metrics"><span><strong>20</strong> columns in one table</span><span><strong>Client + server</strong> examples</span><span><strong>Editable</strong> typed cells</span><span><strong>CSV</strong> export scopes</span></div>
     <div className="sc-section-title"><div><span>01 / EVERYTHING TOGETHER</span><h2>The complete workspace</h2><p>All column types and grid actions in a single, fully interactive table.</p></div><span className="sc-live"><span/> LIVE DATA</span></div>
     <div className="sc-action-guide"><span>TRY THIS</span><span>① Filter status + price</span><span>② Double-click a cell</span><span>③ Select across pages</span><span>④ Export CSV</span></div><ClientOnly><DemoTable mode="all"/></ClientOnly>
@@ -30,7 +33,7 @@ export function TypeDetail({ slug, navigate }: PageProps & { slug:string }) {
 }
 
 export function FeatureGallery({ navigate }: PageProps) {
-  return <><SectionHeading eyebrow="CAPABILITIES / 08 LABS" title="Feature labs" description="Small, practical workspaces for understanding one grid behavior at a time."/><div className="sc-feature-grid">{features.map((item,index) => <NavLink key={item.slug} to={`/features/${item.slug}`} navigate={navigate} className="sc-feature-tile"><span className="sc-tile-index">{String(index+1).padStart(2,'0')} / 08</span><item.icon size={25}/><h3>{item.name}</h3><p>{item.description}</p><span>Open example <ArrowUpRight size={15}/></span></NavLink>)}<NavLink to="/features/server" navigate={navigate} className="sc-feature-tile"><span className="sc-tile-index">08 / 08</span><Database size={25}/><h3>Server data</h3><p>Real page boundaries and export callbacks with a local API simulation.</p><span>Open example <ArrowUpRight size={15}/></span></NavLink></div></>
+  return <><SectionHeading eyebrow={`CAPABILITIES / ${featureCountLabel} LABS`} title="Feature labs" description="Small, practical workspaces for understanding one grid behavior at a time."/><div className="sc-feature-grid">{features.map((item,index) => <NavLink key={item.slug} to={`/features/${item.slug}`} navigate={navigate} className="sc-feature-tile"><span className="sc-tile-index">{String(index+1).padStart(2,'0')} / {featureCountLabel}</span><item.icon size={25}/><h3>{item.name}</h3><p>{item.description}</p><span>Open example <ArrowUpRight size={15}/></span></NavLink>)}<NavLink to="/features/server" navigate={navigate} className="sc-feature-tile"><span className="sc-tile-index">{featureCountLabel} / {featureCountLabel}</span><Database size={25}/><h3>Server data</h3><p>Real page boundaries and export callbacks with a local API simulation.</p><span>Open example <ArrowUpRight size={15}/></span></NavLink></div></>
 }
 
 export function FeatureDetail({ slug, navigate }: PageProps & { slug:string }) {
@@ -38,7 +41,7 @@ export function FeatureDetail({ slug, navigate }: PageProps & { slug:string }) {
   const name = feature?.name ?? 'Server data'
   const description = feature?.description ?? 'Simulated server pagination, cross-page selection and backend-style exports.'
   const tips: readonly string[] = feature?.tips ?? ['Select a page, then go to the next page.','Export selected IDs from both pages.','Try All filtered results in the Export menu.']
-  return <><BackLink to="/features" label="All feature labs" name={name} navigate={navigate}/><SectionHeading eyebrow="FEATURE LAB / INTERACTIVE" title={name} description={description}/><div className="sc-lab-notes">{tips.map((tip,index) => <div key={tip}><span>{String(index+1).padStart(2,'0')}</span><p>{tip}</p></div>)}</div><ClientOnly>{slug === 'server' ? <ServerTable/> : <DemoTable mode="feature" feature={slug as typeof features[number]['slug']}/>}</ClientOnly><NextLink navigate={navigate}/></>
+  return <><BackLink to="/features" label="All feature labs" name={name} navigate={navigate}/><SectionHeading eyebrow="FEATURE LAB / INTERACTIVE" title={name} description={description}/><div className="sc-lab-notes">{tips.map((tip,index) => <div key={tip}><span>{String(index+1).padStart(2,'0')}</span><p>{tip}</p></div>)}</div><ClientOnly>{slug === 'server' ? <ServerTable/> : slug === 'drawer' ? <DrawerDemoTable/> : <DemoTable mode="feature" feature={slug as typeof features[number]['slug']}/>}</ClientOnly><NextLink navigate={navigate}/></>
 }
 
 export function PresetGallery({ navigate }: PageProps) {
