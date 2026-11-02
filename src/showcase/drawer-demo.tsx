@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Building2, Globe2, Mail, MapPin, UserRound } from 'lucide-react'
 import { EnterpriseGridWithDrawer } from '@/components/enterprise-grid-with-drawer'
 import { makeShowcaseRows, showcaseColumns, type ShowcaseRow } from '@/data/showcase'
@@ -8,6 +9,11 @@ const date = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 
 
 const labelStyle = { color: '#77777f', fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '.08em' }
 const valueStyle = { color: '#e7e7ea', fontSize: 13, fontWeight: 600 }
+const actions = [
+  { label: 'Message', icon: Mail },
+  { label: 'Website', icon: Globe2 },
+  { label: 'Owner', icon: UserRound },
+]
 
 export function DrawerDemoTable() {
   const [rows, setRows] = useState(() => makeShowcaseRows(120))
@@ -51,7 +57,7 @@ function CustomerDrawer({ row }: { row: ShowcaseRow }) {
     </div>
 
     <div style={{ display: 'flex', gap: 8, padding: '16px 0', borderBottom: '1px solid #242427' }}>
-      {[['Message', Mail],['Website', Globe2],['Owner', UserRound]].map(([text, Icon]) => <button key={text as string} type="button" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 10px', border: '1px solid #2b2b30', borderRadius: 7, background: '#111113', color: '#b8b8bf', fontSize: 12, cursor: 'pointer' }}><Icon size={14}/>{text as string}</button>)}
+      {actions.map(action => { const Icon = action.icon; return <button key={action.label} type="button" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 10px', border: '1px solid #2b2b30', borderRadius: 7, background: '#111113', color: '#b8b8bf', fontSize: 12, cursor: 'pointer' }}><Icon size={14}/>{action.label}</button> })}
     </div>
 
     <section style={{ padding: '20px 0', borderBottom: '1px solid #242427' }}>
@@ -74,6 +80,6 @@ function CustomerDrawer({ row }: { row: ShowcaseRow }) {
   </div>
 }
 
-function Detail({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function Detail({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return <div style={{ display: 'grid', gridTemplateColumns: '18px 92px minmax(0,1fr)', gap: 8, alignItems: 'center' }}><span style={{ color: '#6f6f77' }}>{icon}</span><span style={labelStyle}>{label}</span><span style={{ ...valueStyle, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</span></div>
 }
