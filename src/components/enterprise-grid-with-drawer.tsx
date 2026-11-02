@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { EnterpriseGrid, type EnterpriseGridProps, type GridColumn } from './enterprise-grid'
@@ -32,15 +32,15 @@ export function EnterpriseGridWithDrawer<T extends { id: string | number }>({ dr
   const [activeRow, setActiveRow] = useState<T | null>(null)
   const allowedColumns = useMemo(() => drawer.columns ? new Set<string>(drawer.columns) : null, [drawer.columns])
 
-  const close = () => {
+  const close = useCallback(() => {
     setActiveRow(null)
     drawer.onClose?.()
-  }
+  }, [drawer])
 
-  const open = (row: T) => {
+  const open = useCallback((row: T) => {
     setActiveRow(row)
     drawer.onOpen?.(row)
-  }
+  }, [drawer])
 
   useEffect(() => {
     if (!activeRow) return
@@ -49,7 +49,7 @@ export function EnterpriseGridWithDrawer<T extends { id: string | number }>({ dr
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [activeRow])
+  }, [activeRow, close])
 
   const drawerColumns = useMemo<GridColumn<T>[]>(() => columns.map(column => {
     if (allowedColumns && !allowedColumns.has(column.key)) return column
@@ -61,7 +61,8 @@ export function EnterpriseGridWithDrawer<T extends { id: string | number }>({ dr
 
     const activate = (event: MouseEvent<HTMLSpanElement> | KeyboardEvent<HTMLSpanElement>, row: T) => {
       const target = event.target as HTMLElement
-      if (target.closest(interactiveSelector) && target !== event.currentTarget) return
+      const interactive = target.closest(interactiveSelector)
+      if (interactive && interactive !== event.currentTarget) return
       if ('key' in event && event.key !== 'Enter' && event.key !== ' ') return
       if ('key' in event) event.preventDefault()
       open(row)
@@ -79,7 +80,7 @@ export function EnterpriseGridWithDrawer<T extends { id: string | number }>({ dr
         style={{ display: 'block', width: '100%', minWidth: 0, cursor: 'pointer' }}
       >{renderOriginal(value, row)}</span>,
     }
-  }), [columns, allowedColumns])
+  }), [columns, allowedColumns, open])
 
   const width = typeof drawer.width === 'number' ? `${drawer.width}px` : drawer.width ?? '520px'
   const overlayStyle: CSSProperties = { position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(0,0,0,.48)', backdropFilter: 'blur(2px)' }
