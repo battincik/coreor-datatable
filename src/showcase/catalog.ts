@@ -1,4 +1,4 @@
-import { Database, Download, Filter, Layers3, MousePointer2, SlidersHorizontal, Sparkles } from 'lucide-react'
+import { Database, Download, Filter, Layers3, MousePointer2, PanelRightOpen, SlidersHorizontal, Sparkles } from 'lucide-react'
 
 export const features = [
   { slug:'filters', name:'Typed filters', icon:Filter, description:'Ranges, multi-select values, dates and search matched to each column type.', keys:['name','status','tags','price','due','rating'], count:480, tips:['Click Filter in the grid toolbar.','Combine a price range with two statuses.','Set Tags to match any or all values.'] },
@@ -8,6 +8,7 @@ export const features = [
   { slug:'columns', name:'Column controls', icon:SlidersHorizontal, description:'Hide, pin, resize and sort columns; switch row density.', keys:['name','owner','status','country','price','progress','trend','timestamp'], count:480, tips:['Hover a header to open its menu.','Pin a column and scroll horizontally.','Drag the header edge to resize, or hide columns.'] },
   { slug:'virtualization', name:'Virtualization', icon:Database, description:'Work with 10,000 rows while drawing only the visible ones.', keys:['name','status','progress','price','tags','trend','timestamp'], count:10000, tips:['Scroll quickly through the table.','Change the grid height in Live controls.','Search and sort the 10,000-row data set.'] },
   { slug:'timestamps', name:'Live timestamps', icon:Sparkles, description:'Switch between nine timestamp styles and inspect exact dates in a tooltip.', keys:['name','status','timestamp','due'], count:180, tips:['Try the R relative-time format.','Change the format without remounting the grid.','Hover or focus the timestamp for its exact date.'] },
+  { slug:'drawer', name:'With Drawer', icon:PanelRightOpen, description:'Open a contextual details drawer from a table cell without leaving the grid.', keys:['name','owner','status','country','price','timestamp'], count:120, tips:['Click a workspace cell to open its drawer.','Keep filtering and sorting without navigating away.','Press Escape or click outside the panel to close it.'] },
 ] as const
 export type FeatureSlug = typeof features[number]['slug']
 export const presets = [
