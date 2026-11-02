@@ -9,14 +9,64 @@ Each row needs a stable, unique `id: string | number`.
 | `data: T[]` | Current rows, or the active server page in `serverMode`. |
 | `columns: GridColumn<T>[]` | Typed fields. Can change at runtime. |
 | `onDataChange?: (rows:T[]) => void` | Controlled editing, deletion, undo and redo. Omitting it makes the grid read-only. |
-| `title?: string` | Toolbar title. |
-| `height?: number` | Scroll viewport height in pixels. |
+| `title?: string` | Accessible grid label. The visual `grid-title` header is no longer rendered. |
+| `height?: number` | Fixed table-body height in pixels. Defaults to `420`. |
+| `minHeight?: number` | Minimum body height, especially useful with `fitViewport`. |
+| `maxHeight?: number` | Maximum body height. |
+| `fitViewport?: boolean` | Fits the table body to the browser viewport. |
+| `viewportOffset?: number` | Space reserved outside the table when `fitViewport` is enabled. Defaults to `280`. |
+| `internalScroll?: boolean` | Enables/disables vertical scrolling inside the table body. Defaults to `true`. |
+| `refresh?: GridRefreshOptions` | Optional refresh button. The consumer owns the actual fetch/reload logic. |
 | `pagination?: false \| { initialPageSize?, pageSizeOptions?, state?, onChange? }` | Client pagination or disabled when `false`. |
 | `serverMode?: boolean` | Sorting, filtering and pagination delegated to your API. |
 | `totalRows?: number` | Total matching count when using `serverMode`. |
 | `onQueryChange?: (query: GridQuery) => void` | New search, sort, filter and page parameters. |
 | `onExportRequest?: (request: GridExportRequest) => Promise<Blob \| string \| void>` | Server export callback for all matching or selected rows. |
 | `filename?: string` | CSV download filename. |
+
+### Refresh
+
+The grid only renders and manages the refresh button state. Your application decides what refreshing means.
+
+```tsx
+<EnterpriseGrid
+  data={rows}
+  columns={columns}
+  refresh={{
+    label: 'Verileri yenile',
+    onRefresh: async () => {
+      const next = await fetchRows()
+      setRows(next)
+    },
+  }}
+/>
+```
+
+`GridRefreshOptions` supports:
+
+- `onRefresh: () => void | Promise<void>` — required consumer callback.
+- `loading?: boolean` — controlled loading state from your application.
+- `disabled?: boolean` — force-disable the button.
+- `disableWhileRefreshing?: boolean` — defaults to `true`; async callbacks are disabled while pending.
+- `label?: string` — accessible label/title for the refresh button.
+
+The refresh control appears between the reset control and undo/redo, separated by vertical dividers.
+
+### Height and internal scrolling
+
+```tsx
+<EnterpriseGrid
+  data={rows}
+  columns={columns}
+  fitViewport
+  minHeight={260}
+  maxHeight={560}
+  viewportOffset={320}
+  internalScroll
+/>
+```
+
+Use a fixed `height` for predictable layouts or `fitViewport` when the table should fill the remaining browser space. `internalScroll` keeps vertical scrolling inside the data body so the surrounding page does not need to grow with large result sets.
 
 `GridQuery` is `{ search, sorting, filters, pageIndex, pageSize }`. In server mode, only the active page is provided in `data`, while selected row IDs persist across pages. Your API must sort/filter raw values with the same semantics as the column type. The server export callback handles rows not loaded in the browser.
 
