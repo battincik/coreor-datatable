@@ -1,6 +1,6 @@
 {
   "name": "@battincik/coreor-datatable",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Typed, editable React data grid with virtual rows, filters and CSV export",
   "license": "MIT",
   "type": "module",
