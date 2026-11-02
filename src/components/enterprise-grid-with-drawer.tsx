@@ -61,7 +61,8 @@ export function EnterpriseGridWithDrawer<T extends { id: string | number }>({ dr
 
     const activate = (event: MouseEvent<HTMLSpanElement> | KeyboardEvent<HTMLSpanElement>, row: T) => {
       const target = event.target as HTMLElement
-      if (target.closest(interactiveSelector) && target !== event.currentTarget) return
+      const interactive = target.closest(interactiveSelector)
+      if (interactive && interactive !== event.currentTarget) return
       if ('key' in event && event.key !== 'Enter' && event.key !== ' ') return
       if ('key' in event) event.preventDefault()
       open(row)
